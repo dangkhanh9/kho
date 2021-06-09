@@ -8,7 +8,7 @@ In other words, the term *quantile forecast* implies that we are no longer focus
 ## Forecasting model
 
 The forecasting framework implemented is the *prophet* procedure developed by [Facebook](https://facebook.github.io/prophet/).  
-All of the specific details for this modeling technique can be found at the [prophet documentation](https://facebook.github.io/prophet/) and the paper [*Forecasting at scale*](docs/forecasting_at_scale_prophetFB.pdf). 
+All of the specific details for this modeling technique can be found at the [prophet documentation](https://facebook.github.io/prophet/) and the paper [*Forecasting at scale*](forecasting_at_scale_prophetFB.pdf). 
                          
 I highly recommend a thorough analysis of the documentation to understand more about this model.
 
