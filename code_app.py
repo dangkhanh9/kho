@@ -33,6 +33,8 @@ app = dash.Dash(__name__,
                 #external_stylesheets=[dbc.themes.FLATLY]
                 )
 
+server = app.server
+
 app.scripts.config.serve_locally = True
 app.config['suppress_callback_exceptions'] = True
 
