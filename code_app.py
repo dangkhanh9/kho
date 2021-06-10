@@ -336,7 +336,7 @@ app.layout = html.Div([
                          be found at the [prophet documentation](https://facebook.github.io/prophet/)
                          and the paper [*Forecasting at scale*](https://peerj.com/preprints/3190/). 
                          \n I highly recommend reviewing this documentation to adapt the model 
-                         to your data more appropriately by modifying the source code of this app.  
+                         to your data more appropriately by modifying the [source code](https://github.com/carlosjps/quantile-forecast-dashapp) of this app.  
                          
                          '''),
                          
