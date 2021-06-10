@@ -1,11 +1,13 @@
 dash==1.20.0
 dash-extensions==0.0.55
-prophet==1.0.1
-numpy==1.20.3
-openpyxl==3.0.7
+gunicorn==20.1.0
 pandas==1.2.4
 plotly==4.14.3
 pystan==2.19.1.1
+numpy==1.20.3
+openpyxl==3.0.7
+prophet==1.0.1
+
 
 
 
