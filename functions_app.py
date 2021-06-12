@@ -14,8 +14,6 @@ import pandas as pd
 
 
 
-
-
 ##=======================FUNCTION 1=============================================##
 ## FITTING PROPHET MODEL AND GENERATION OF SAMPLES FROM PREDICTIVE POSTERIOR DISTRIBUTION
 ##=============================================================================##
@@ -56,7 +54,44 @@ class suppress_stdout_stderr(object):
 
 #############################################################################
 
-def ejecutar_modelo(serie,fecha_fin, initial, period, horizon, **kwargs):
+def ejecutar_modelo(serie, fecha_fin, **kwargs):
+    
+
+    
+    modelo = Prophet(changepoint_prior_scale=0.01, # por defecto es 0.05. Determina la felixibilidad de la tendencia
+                    seasonality_mode='additive', # estacionalidad aditiva
+                    seasonality_prior_scale= 10, # por defecto es 10. # Controla la flexibilidad de la estacionalidad 
+                    yearly_seasonality=True, # existencia de estacionalidad anual
+                    weekly_seasonality=False, # no estacionalidad semanal
+                    daily_seasonality=False, # ni estacionalidad diaria
+                    uncertainty_samples=1e3, #defecto es 1000, Numero de muestras utilizadas para estimar el intervalo de predicción.
+# uncertainty samples también nos permite seleccionar el número de muestras a extraer en la distribución predictiva posterior.
+                    interval_width = 0.95) #Esto dará predicciones con un intervalo al 95% (2.5% a 97.5%).
+    
+    with suppress_stdout_stderr():
+        modelo.fit(serie)
+    
+    #anyos = fecha_fin.year - serie.ds.max().year # Número de años a predecir
+    fechas = pd.date_range(start = serie.ds.max() + pd.Timedelta(1, unit="day"),
+                           end = datetime.strptime(str(fecha_fin.day)+"-"+str(fecha_fin.month)+"-"+str(fecha_fin.year), "%d-%m-%Y"),
+                           #periods = round(365.25*anyos), #periodos = 365.25 * el número de años a predecir 
+                           freq="D") # frecuencia diaria
+    futuro = pd.DataFrame({'ds': fechas})
+    
+    predsamples = modelo.predictive_samples(futuro)
+    
+    yhat_predsamples = pd.DataFrame(predsamples["yhat"], 
+                                  index = futuro.ds)
+    
+    
+    
+    return yhat_predsamples
+
+
+
+def ejecutar_modelo_cv(serie, fecha_fin, initial, period, horizon):
+    
+
     
     modelo = Prophet(changepoint_prior_scale=0.01, # por defecto es 0.05. Determina la felixibilidad de la tendencia
                     seasonality_mode='additive', # estacionalidad aditiva
@@ -84,6 +119,7 @@ def ejecutar_modelo(serie,fecha_fin, initial, period, horizon, **kwargs):
                                   index = futuro.ds)
     
     df_cv = cross_validation(modelo, initial=str(initial)+'days', period=str(period)+'days', horizon = str(horizon)+'days', parallel="processes") 
+    
     
     return yhat_predsamples, df_cv
 
