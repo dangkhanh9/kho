@@ -1,6 +1,6 @@
 import dash_html_components as html
 import dash_core_components as dcc
-#import dash_bootstrap_components as dbc
+
 
 import dash
 
@@ -29,8 +29,7 @@ import functions_app as f
 
 
 app = dash.Dash(__name__, 
-                title='Probabilistic Forecasting',
-                #external_stylesheets=[dbc.themes.FLATLY]
+                title='Probabilistic Forecasting'
                 )
 
 server = app.server
@@ -39,7 +38,6 @@ app.scripts.config.serve_locally = True
 app.config['suppress_callback_exceptions'] = True
 
 all_options = {
-    #'percentiles': [0.05, 2.5, 5, 15, 25, 50, 75, 90, 95, 97.5, 99.95 ],
     'metrics': ['mse', 'rmse', 'mae', 'mape', 'coverage']
 }
 
@@ -128,8 +126,28 @@ app.layout = html.Div([
     html.Br(),
              
     
-    html.H5("Select parameters for cross-validation"),
+   
+    html.H5("Should Cross-Validation be performed? (*)"),
+
+    dcc.ConfirmDialog(
+        id='confirm-cv',
+        message='(*) Cross-Validation may exceed memory quota and get the app crashed! Work locally instead. Are you sure you want to continue?',
+    ),
+
+    dcc.RadioItems(
+        id='radioitems-cv',
+        options=[
+            {'label': i, 'value': i}
+            for i in ['YES', 'NO']
+        ],
+        value='NO',
+        labelStyle={'display': 'inline-block'}
+    ),
+    html.Div(id='output-confirm-cv'),
     
+    html.Br(),
+    
+     html.H5("Select parameters for cross-validation"),
     
     dcc.Input(
                 id="initial",
@@ -164,22 +182,6 @@ app.layout = html.Div([
         children="Let's make our predictions!"),
 
 
-#    html.Br(),
-#    html.H5("Updated Table"),
-#    html.Div(
-        
-#        dt.DataTable(
-#        id='table',
-#        columns=[],
-#        data=[],
-#        page_size=15,
-#        style_cell={
-#        "textAlign": 'left',
-#        },
-#        style_header=dict(backgroundColor="paleturquoise"),
-#        style_data=dict(backgroundColor="lavender"),
-#        style_table={'overflowX': 'scroll'}
-#        )),
     
     html.Br(),
   
@@ -227,10 +229,11 @@ app.layout = html.Div([
     html.Hr(),
     
     
-    html.H3("3. Cross-Validation",
+    html.H3("3. Diagnostics: Time Series Cross-Validation",
             style = {'color': 'blue'}),
     
-    html.H5("Select performance metric to plot"),
+    html.H4("Select performance metric to plot",
+            style = {'color': 'blue'}),
     dcc.Dropdown(id='dropdown-metric',
         multi = False,
         options= [{'label': k, 'value': k} for k in all_options["metrics"]],
@@ -248,7 +251,7 @@ app.layout = html.Div([
     
     dcc.Graph(id='plot-cv'),
     
-    html.H5("Cross validation performance metrics", 
+    html.H4("Cross validation performance metrics", 
             style = {'color': 'blue'}),
     
     html.Div(
@@ -350,7 +353,8 @@ app.layout = html.Div([
                 the *response* and *time*. \n * [Time series cross-validation](https://otexts.com/fpp3/tscv.html) 
                 is used to diagnose the model. For this reason,
                 it is necessary to enter the initial training period, the *period* or space between cutoff dates and the forecast *horizon* 
-                in each cross-validation step.
+                in each cross-validation step. 
+                \n It is important to keep in mind that **_memory quota_ may be exceeded** due to memory limitations in the free plan of the platform. It is advisable to [download the app](https://github.com/carlosjps/quantile-forecast-dashapp) and work locally instead.
                 '''),
                    
                    
@@ -421,7 +425,7 @@ app.layout = html.Div([
                     'margin-bottom': '10px'}
                 )
     
-# Functions
+
 
 # file upload function
 def parse_contents(contents, filename):
@@ -462,22 +466,43 @@ def update_output( contents, filename):
         return [], [], []
 
 
+#callback confirmation CROSS VALIDATION
+@app.callback(Output('confirm-cv', 'displayed'),
+              Input('radioitems-cv', 'value'))
+def display_confirm(value):
+    if value == 'YES':
+        return True
+    return False
 
-#callback update options of filter dropdown
+@app.callback(Output('output-confirm-cv', 'children'),
+              Input('radioitems-cv', 'value'))
+def confirm_cv(confirmcv):
+    if confirmcv=="YES":
+        return '''
+    (*) Bear in mind that Time Series Cross Validation is 
+    computationally challenging and it requires considerable memory.
+    '''
+
+
+
+#callback update options and forecasts
 @app.callback([Output('plot', 'figure'),
                Output('predictions-table', 'data'),
                Output('predictions-table', 'columns'),
-               Output('result-cv-intermedio', 'children'),
-               Output('result-posteriorsamples-intermedio', 'children')],
+               Output('result-posteriorsamples-intermedio', 'children'),
+               Output('result-cv-intermedio', 'children') 
+               ],
               [Input('propagate-button', 'n_clicks'),
                State('result-intermedio', 'children'),
                State('dropdown_table_filterDate', 'value'),
                State('dropdown_table_filterResponse', 'value'),
-               State("endate", "date"), 
+               State("endate", "date"),
+               State('radioitems-cv', 'value'),
                State('initial', 'value'),
                State('period', 'value'),
-               State("horizon", "value")])
-def create_forecast(n_clicks_update, df_uploaded, dropdown_date, dropdown_resp, endate, initial, period, horizon):
+               State("horizon", "value")
+               ])
+def create_forecast(n_clicks_update, df_uploaded, dropdown_date, dropdown_resp, endate, click_cv, initial, period, horizon):
     if n_clicks_update is not None: 
         df_upload = json.loads(df_uploaded) 
         df_upload = pd.read_json(df_upload['df1'], orient='split')
@@ -491,16 +516,16 @@ def create_forecast(n_clicks_update, df_uploaded, dropdown_date, dropdown_resp, 
         
             
         endate = datetime.strptime(endate, "%Y-%m-%d")
+        
+        if click_cv=="YES":
+            muestras_predict, cross_val = f.ejecutar_modelo_cv(dff, fecha_fin=endate, initial=initial, period=period, horizon=horizon)
             
-
-
-        #q = all_options["percentiles"]            
-        #q = [percentiles/ 100 for percentiles in q]
+            crossval = {'df1': cross_val.to_json(orient='split')}
+        else:
+            muestras_predict = f.ejecutar_modelo(dff, fecha_fin=endate)
+            
+            crossval = {}
         
-        muestras_predict, cross_val = f.ejecutar_modelo(dff, fecha_fin=endate, initial=initial,
-                                                        period=period, horizon=horizon)
-        
-        crossval = {'df1': cross_val.to_json(orient='split')}
         
         posterior_samples = {'df1': muestras_predict.to_json(orient='split')}
         
@@ -562,7 +587,7 @@ def create_forecast(n_clicks_update, df_uploaded, dropdown_date, dropdown_resp, 
 
     
 
-        return fig_vols, result.to_dict('records'), [{'name': i, 'id': i} for i in result.columns], json.dumps(crossval), json.dumps(posterior_samples)
+        return fig_vols, result.to_dict('records'), [{'name': i, 'id': i} for i in result.columns],  json.dumps(posterior_samples), json.dumps(crossval)
 
     
     else:
@@ -578,11 +603,6 @@ def create_forecast(n_clicks_update, df_uploaded, dropdown_date, dropdown_resp, 
               [Input('cv-button', 'n_clicks'),
                State('result-cv-intermedio', 'children'),
                State('dropdown-metric','value')
-               #State('dropdown_table_filterDate', 'value'),
-               #State('dropdown_table_filterResponse', 'value'),
-               #State('initial', 'value'),
-               #State('period', 'value'),
-               #State("horizon", "date")
                ])
 def cross_validate(n_clicks_update, crossval, metric):
     if n_clicks_update is not None:
